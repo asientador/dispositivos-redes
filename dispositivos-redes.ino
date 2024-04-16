@@ -1,3 +1,9 @@
+#include <ArduinoHttpClient.h>
+#include <b64.h>
+#include <HttpClient.h>
+#include <URLEncoder.h>
+#include <URLParser.h>
+#include <WebSocketClient.h>
 
 #include <Wire.h>
 #include <SPI.h>
@@ -9,13 +15,7 @@
 #include <LiquidCrystal_I2C.h>
 #include <PubSubClient.h>
 #include <ThingsBoard.h>
-
-#define BME_SCK 13
-#define BME_MISO 12
-#define BME_MOSI 11
-#define BME_CS 10
-
-#define SEALEVELPRESSURE_HPA (1013.25)
+#include <ArduinoJson.h> // Biblioteca para manipular JSON
 
 Adafruit_BME280 bme; // I2C
 
@@ -41,7 +41,6 @@ LiquidCrystal_I2C lcd(LCD_ADDR, LCD_COLS, LCD_ROWS);
 WiFiClient espClient;
 PubSubClient client(espClient);
 ThingsBoard tb(espClient);
-
 
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "time.google.com", 3600);
@@ -155,7 +154,7 @@ void loop() {
     
     // Cambia el menú cada vez que se presiona el botón
     currentMenu++;
-    if (currentMenu > 2) { // Ajusta este valor si agregas más menús
+    if (currentMenu > 3) { // Ajusta este valor si agregas más menús
       currentMenu = 0;
     }
   }
@@ -170,6 +169,9 @@ void loop() {
       break;
     case 2:
       showTempHum();
+      break;
+    case 3:
+      showEconomyNews(); // Llamada a la función para mostrar noticias de economía
       break;
     default:
       showDefaultMenu();
@@ -235,6 +237,49 @@ void showTempHum() {
   lcd.print("%");
   delay(1000); // Puedes ajustar este retraso según sea necesario
 }
+
+void showEconomyNews() {
+  Serial.println("Requesting economy news...");
+  if (WiFi.status() == WL_CONNECTED) {
+    HttpClient client = HttpClient(espClient, "newsapi.org", 80);
+    client.get("/v2/everything?q=economia&apiKey=6a8c3c809fa74e7b819d38ec1caeddef");
+    delay(1000); // Esperar un segundo para asegurar la recepción de datos
+    bool firstNews = true; // Flag para identificar la primera noticia
+    unsigned long startTime = millis(); // Tiempo de inicio
+    String news; // Variable para almacenar la noticia
+    while (client.available()) {
+      news = client.readStringUntil('\n'); // Leer la noticia completa
+      if (firstNews) { // Si es la primera noticia
+        // Parsear el JSON para obtener el titular
+        DynamicJsonDocument doc(1024);
+        DeserializationError error = deserializeJson(doc, news);
+        if (!error) {
+          const char* title = doc["articles"][0]["title"]; // Obtener el titular
+          lcd.clear(); // Limpiar la pantalla del LCD
+          lcd.setCursor(0, 0); // Establecer el cursor en la primera fila
+          lcd.print(title); // Mostrar el titular en el LCD
+          startTime = millis(); // Reiniciar el tiempo de inicio
+          firstNews = false; // Desactivar el flag de la primera noticia
+        } else {
+          Serial.println("Failed to parse JSON");
+        }
+      } else {
+        Serial.println(news); // Imprimir la noticia por el puerto serial
+      }
+    }
+    // Esperar 3 segundos para mostrar la primera noticia
+    if (!firstNews) {
+      while (millis() - startTime < 3000) {
+        // Esperar
+      }
+      lcd.clear(); // Limpiar la pantalla del LCD
+      lcd.setCursor(0, 0); // Establecer el cursor en la primera fila
+    }
+  } else {
+    Serial.println("WiFi connection failed");
+  }
+}
+
 
 String getFormattedTime(long timeZoneOffset) {
   unsigned long currentTime = timeClient.getEpochTime() + timeZoneOffset;
