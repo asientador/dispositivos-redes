@@ -61,8 +61,8 @@ RPC_Callback callbacks[] = {
 
 RPC_Response estadoDispositivo(const RPC_Data &data)
 {
-  Serial.print("ENVIO FALSE\n");
-  return RPC_Response(NULL,false );
+  Serial.print("CUIDAO QUE HA LLEGADO RPC\n");
+  return RPC_Response(NULL,true);
 }
 
 void setup() {
@@ -78,23 +78,8 @@ void setup() {
   connectWiFi();
   connectThingsBoard();
 
-  // Subscribe for RPC, if needed
-  if (!subscribed) {
-    Serial.println("Subscribing for RPC...");
-    // Perform a subscription. All consequent data processing will happen in
-    // callbacks as denoted by callbacks[] array.
-    if (!client.subscribe("v1/devices/me/rpc/request/+", 1)) {
-      Serial.println("Failed to subscribe for RPC");
-      return;
-    }
 
-    Serial.println("Subscribe done");
-    subscribed = true;
-  }
-}
-
-void loop() {
-    // Reconnect to ThingsBoard, if needed
+  // Reconnect to ThingsBoard, if needed
   if (!tb.connected()) {
     subscribed = false;
 
@@ -108,6 +93,61 @@ void loop() {
       return;
     }
   }
+
+  // Subscribe for RPC, if needed
+  if (!subscribed) {
+    Serial.println("Subscribing for RPC...");
+
+    // Perform a subscription. All consequent data processing will happen in
+    // callbacks as denoted by callbacks[] array.
+    if (!tb.RPC_Subscribe(callbacks, COUNT_OF(callbacks))) {
+      Serial.println("Failed to subscribe for RPC");
+      return;
+    }
+
+    Serial.println("Subscribe to callbacks done");
+    subscribed = true;
+  }
+}
+
+void loop() {
+
+  // Reconnect to WiFi, if needed
+  if (WiFi.status() != WL_CONNECTED) {
+    reconnect();
+    return;
+  }
+
+  // Reconnect to ThingsBoard, if needed
+  if (!tb.connected()) {
+    subscribed = false;
+
+    // Connect to the ThingsBoard
+    Serial.print("Connecting to: ");
+    Serial.print(THINGSBOARD_SERVER);
+    Serial.print(" with token ");
+    Serial.println(TOKEN);
+    if (!tb.connect(THINGSBOARD_SERVER, TOKEN)) {
+      Serial.println("Failed to connect");
+      return;
+    }
+  }
+
+  // Subscribe for RPC, if needed
+  if (!subscribed) {
+    Serial.println("Subscribing for RPC...");
+
+    // Perform a subscription. All consequent data processing will happen in
+    // callbacks as denoted by callbacks[] array.
+    if (!tb.RPC_Subscribe(callbacks, COUNT_OF(callbacks))) {
+      Serial.println("Failed to subscribe for RPC");
+      return;
+    }
+
+    Serial.println("Subscribe done");
+    subscribed = true;
+  }
+
   
   if (buttonPressed) {
     Serial.println("¡Botón presionado!");
@@ -147,8 +187,9 @@ void loop() {
   tb.sendTelemetryFloat("TemperaturaESP", temperature);
   tb.sendTelemetryInt("HumedadESP", humidity);
   Serial.printf("Enviada temperatura %f y humedad %d\n",temperature,humidity);
+  //delay(100); // Ajusta el retraso según sea necesario
 
-  delay(500); // Ajusta el retraso según sea necesario
+  tb.loop();
 }
 
 void showDefaultMenu() {
@@ -235,6 +276,7 @@ void connectThingsBoard() {
     }
   }
 }
+
 
 void reconnect() {
   if (!client.connected()) {
