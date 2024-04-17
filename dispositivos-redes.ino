@@ -21,11 +21,11 @@ Adafruit_BME280 bme; // I2C
 
 #define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
 
-#define WIFI_AP_NAME        "wifiperuana"
-#define WIFI_PASSWORD       "abascalvox"
+#define WIFI_AP_NAME        "DIGIFIBRA-ECdy"
+#define WIFI_PASSWORD       "GRt6tX2KR7sc"
 
 #define TOKEN               "1234"
-#define THINGSBOARD_SERVER  "192.168.79.140"
+#define THINGSBOARD_SERVER  "192.168.1.132"
 #define SERIAL_DEBUG_BAUD   115200
 
 #define PINAZUL             33
@@ -41,6 +41,7 @@ LiquidCrystal_I2C lcd(LCD_ADDR, LCD_COLS, LCD_ROWS);
 WiFiClient espClient;
 PubSubClient client(espClient);
 ThingsBoard tb(espClient);
+
 
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "time.google.com", 3600);
@@ -78,6 +79,7 @@ void setup() {
   connectThingsBoard();
 
 
+
   // Reconnect to ThingsBoard, if needed
   if (!tb.connected()) {
     subscribed = false;
@@ -106,7 +108,7 @@ void setup() {
 
     Serial.println("Subscribe to callbacks done");
     subscribed = true;
-  }
+  }    
 }
 
 void loop() {
@@ -237,48 +239,57 @@ void showTempHum() {
   lcd.print("%");
   delay(1000); // Puedes ajustar este retraso según sea necesario
 }
+  //business entertainment general health science sports technology
 
 void showEconomyNews() {
-  Serial.println("Requesting economy news...");
+  Serial.println("Solicitando noticias de economía...");
   if (WiFi.status() == WL_CONNECTED) {
     HttpClient client = HttpClient(espClient, "newsapi.org", 80);
-    client.get("/v2/everything?q=economia&apiKey=6a8c3c809fa74e7b819d38ec1caeddef");
+    client.get("/v2/top-headlines/sources?apiKey=8631a941dd2b40bba8bf5a56b9891e9f");
+  
     delay(1000); // Esperar un segundo para asegurar la recepción de datos
-    bool firstNews = true; // Flag para identificar la primera noticia
-    unsigned long startTime = millis(); // Tiempo de inicio
     String news; // Variable para almacenar la noticia
-    while (client.available()) {
-      news = client.readStringUntil('\n'); // Leer la noticia completa
-      if (firstNews) { // Si es la primera noticia
-        // Parsear el JSON para obtener el titular
-        DynamicJsonDocument doc(1024);
-        DeserializationError error = deserializeJson(doc, news);
-        if (!error) {
-          const char* title = doc["articles"][0]["title"]; // Obtener el titular
-          lcd.clear(); // Limpiar la pantalla del LCD
-          lcd.setCursor(0, 0); // Establecer el cursor en la primera fila
-          lcd.print(title); // Mostrar el titular en el LCD
-          startTime = millis(); // Reiniciar el tiempo de inicio
-          firstNews = false; // Desactivar el flag de la primera noticia
-        } else {
-          Serial.println("Failed to parse JSON");
+
+    if (client.available()) {
+      news = client.readString(); // Leer toda la respuesta
+
+      // Definir el índice de inicio de búsqueda del titular
+      int titleStart = 0;
+      
+      while (true) {
+        // Encontrar la próxima ocurrencia del titular
+        titleStart = news.indexOf("\"title\":\"", titleStart); // Encontrar el inicio del titular
+        if (titleStart == -1) {
+          break; // Salir del bucle si no se encuentra más titular
         }
-      } else {
-        Serial.println(news); // Imprimir la noticia por el puerto serial
+        titleStart += 9; // Mover el índice de inicio al final del título actual
+        int titleEnd = news.indexOf("\"", titleStart); // Encontrar el fin del titular
+        
+        if (titleEnd == -1) {
+          break; // Salir del bucle si no se encuentra el fin del titular
+        }
+
+        // Extraer el titular entre las comillas
+        String title = news.substring(titleStart, titleEnd);
+
+        lcd.clear(); // Limpiar la pantalla del LCD
+        // Mostrar el titular en el LCD
+        lcd.print(title);
+
+        // Esperar un tiempo antes de pasar al próximo titular
+        delay(2000); // Esperar 2 segundos antes de mostrar la próxima noticia
+
+        // Actualizar el índice de inicio para la próxima búsqueda
+        titleStart = titleEnd;
       }
-    }
-    // Esperar 3 segundos para mostrar la primera noticia
-    if (!firstNews) {
-      while (millis() - startTime < 3000) {
-        // Esperar
-      }
-      lcd.clear(); // Limpiar la pantalla del LCD
-      lcd.setCursor(0, 0); // Establecer el cursor en la primera fila
+    } else {
+      Serial.println("No se recibió ninguna respuesta del servidor");
     }
   } else {
-    Serial.println("WiFi connection failed");
+    Serial.println("Fallo en la conexión WiFi");
   }
 }
+
 
 
 String getFormattedTime(long timeZoneOffset) {
