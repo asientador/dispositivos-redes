@@ -57,6 +57,10 @@ void IRAM_ATTR handleButtonInterrupt()
 // RPC handlers
 RPC_Callback callbacks[] = {
     {"estadoDispositivo", estadoDispositivo},
+    {"economiaSet", economiaSet},
+    {"economiaGet", economiaGet},
+
+
 };
 
 RPC_Response estadoDispositivo(const RPC_Data &data)
@@ -112,6 +116,23 @@ void setup()
     Serial.println("Subscribe to callbacks done");
     subscribed = true;
   }
+}
+
+int categoriaEconomia;
+
+RPC_Response economiaSet(const RPC_Data &data)
+{
+
+  categoriaEconomia = data;
+  Serial.printf("RPC ECONOMIA SET %d",data);
+
+  return RPC_Response(NULL, categoriaEconomia);
+}
+
+RPC_Response economiaGet(const RPC_Data &data)
+{
+  Serial.printf("RPC ECONOMIA GET %d \n",data);
+  return RPC_Response(NULL,categoriaEconomia );
 }
 
 void loop()
