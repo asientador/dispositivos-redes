@@ -21,11 +21,11 @@ Adafruit_BME280 bme; // I2C
 
 #define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
 
-#define WIFI_AP_NAME        "DIGIFIBRA-ECdy"
-#define WIFI_PASSWORD       "GRt6tX2KR7sc"
+#define WIFI_AP_NAME        "wifiperuana"
+#define WIFI_PASSWORD       "abascalvox"
 
 #define TOKEN               "1234"
-#define THINGSBOARD_SERVER  "192.168.1.132"
+#define THINGSBOARD_SERVER  "192.168.137.117"
 #define SERIAL_DEBUG_BAUD   115200
 
 #define PINAZUL             33
@@ -241,27 +241,32 @@ void showTempHum() {
 }
   //business entertainment general health science sports technology
 
+
 void showEconomyNews() {
   Serial.println("Solicitando noticias de economía...");
   if (WiFi.status() == WL_CONNECTED) {
     HttpClient client = HttpClient(espClient, "newsapi.org", 80);
-    client.get("/v2/top-headlines/sources?apiKey=8631a941dd2b40bba8bf5a56b9891e9f");
+    client.get("/v2/top-headlines?country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f");
   
+    // https://newsapi.org/v2/top-headlines?country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f
     delay(1000); // Esperar un segundo para asegurar la recepción de datos
     String news; // Variable para almacenar la noticia
 
     if (client.available()) {
       news = client.readString(); // Leer toda la respuesta
-
+      Serial.println("Noticias recibidas");
       // Definir el índice de inicio de búsqueda del titular
       int titleStart = 0;
       
       while (true) {
         // Encontrar la próxima ocurrencia del titular
         titleStart = news.indexOf("\"title\":\"", titleStart); // Encontrar el inicio del titular
+
+        Serial.printf("El title start es -> %d",titleStart);
         if (titleStart == -1) {
           break; // Salir del bucle si no se encuentra más titular
         }
+        Serial.println("He pasado el tittle start");
         titleStart += 9; // Mover el índice de inicio al final del título actual
         int titleEnd = news.indexOf("\"", titleStart); // Encontrar el fin del titular
         
@@ -271,6 +276,8 @@ void showEconomyNews() {
 
         // Extraer el titular entre las comillas
         String title = news.substring(titleStart, titleEnd);
+
+        Serial.println("He pillado el titulo");
 
         lcd.clear(); // Limpiar la pantalla del LCD
         // Mostrar el titular en el LCD
@@ -289,6 +296,49 @@ void showEconomyNews() {
     Serial.println("Fallo en la conexión WiFi");
   }
 }
+
+
+String getLastMatchResult() {
+  if (WiFi.status() == WL_CONNECTED) {
+    HttpClient client = HttpClient(espClient, "api.live-score-api.com", 80);
+    client.get("/matches?team=Real%20Madrid&key=MSzbG1I0p4Urn0Q8");
+  
+    delay(1000);
+    String result;
+
+    if (client.available()) {
+      result = client.readString();
+      Serial.println("Respuesta recibida:");
+
+      // Analizar la respuesta JSON para extraer el resultado del partido
+      DynamicJsonDocument doc(1024);
+      DeserializationError error = deserializeJson(doc, result);
+
+      if (error) {
+        Serial.print(F("deserializeJson() failed: "));
+        Serial.println(error.c_str());
+        return "Error al analizar JSON";
+      }
+
+      // Obtener el resultado del partido
+      JsonObject match = doc["data"]["matches"][0];
+      String homeTeam = match["home_name"].as<String>();
+      String awayTeam = match["away_name"].as<String>();
+      String homeScore = match["home_score"].as<String>();
+      String awayScore = match["away_score"].as<String>();
+
+      String lastMatchResult = homeTeam + " " + homeScore + " - " + awayScore + " " + awayTeam;
+      return lastMatchResult;
+    } else {
+      Serial.println("No se recibió ninguna respuesta del servidor");
+    }
+  } else {
+    Serial.println("Fallo en la conexión WiFi");
+  }
+  
+  return "No se pudo obtener el resultado del partido";
+}
+
 
 
 
