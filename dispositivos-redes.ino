@@ -37,6 +37,42 @@ Adafruit_BME280 bme; // I2C
 
 #define BUTTON_PIN 23 // Pin del botón
 
+const int MAX_CATEGORIAS = 7; // Número máximo de categorías
+
+struct Tabla {
+    std::string categorias[MAX_CATEGORIAS];
+    bool estados[MAX_CATEGORIAS];
+
+    // Constructor para inicializar la tabla con categorías predeterminadas
+    Tabla() {
+        // Categorías predeterminadas
+        categorias[0] = "x";
+        categorias[1] = "business";
+        categorias[2] = "entertainment";
+        categorias[3] = "health";
+        categorias[4] = "science";
+        categorias[5] = "sports";
+        categorias[6] = "technology";
+
+        // Establecer todas las categorías como activadas por defecto
+        for (int i = 0; i < MAX_CATEGORIAS; ++i) {
+            estados[i] = false;
+        }
+    }
+
+    // Función para imprimir la tabla y el estado de activación de cada categoría
+    void imprimirTabla() {
+        Serial.println("Tabla de Categorías:");
+        for (int i = 0; i < MAX_CATEGORIAS; ++i) {
+            Serial.printf("%s",categorias[i].c_str());
+            Serial.print(": ");
+            Serial.println(estados[i] ? "Activada" : "Desactivada");
+        }
+    }
+};
+
+Tabla tablaCategorias;
+
 LiquidCrystal_I2C lcd(LCD_ADDR, LCD_COLS, LCD_ROWS);
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -57,15 +93,55 @@ void IRAM_ATTR handleButtonInterrupt()
 // RPC handlers
 RPC_Callback callbacks[] = {
     {"estadoDispositivo", estadoDispositivo},
-    {"economiaSet", economiaSet},
-    {"economiaGet", economiaGet},
-
-
+    {"setCategoria", processSetCategoriaState },
+    {"getCategoria", processGetCategoriaState}
 };
 
 RPC_Response estadoDispositivo(const RPC_Data &data)
 {
-  Serial.print("CUIDAO QUE HA LLEGADO RPC\n");
+  Serial.print("RPC ESTADO DISPOSITIVO\n");
+  return RPC_Response(NULL, true);
+}
+
+RPC_Response processSetCategoriaState(const RPC_Data &data)
+{
+  Serial.println("RPC SET CATEGORIAS\n");
+
+  int indice = data["pin"];
+  bool estado = data["enabled"];
+
+  if (indice < MAX_CATEGORIAS) {
+        tablaCategorias.estados[indice] = estado;
+        tablaCategorias.imprimirTabla();
+  }
+
+  Serial.printf("Voy a devolver %d %d",data["pin"],data["enabled"]);
+  return RPC_Response(std::to_string(indice).c_str(), estado);
+}
+
+/*
+String get_gpio_status() {
+  // Prepare gpios JSON payload string
+  StaticJsonBuffer<200> jsonBuffer;
+  JsonObject& data = jsonBuffer.createObject();
+  data[String(GPIO0_PIN)] = gpioState[0] ? true : false;
+  data[String(GPIO2_PIN)] = gpioState[1] ? true : false;
+  char payload[256];
+  data.printTo(payload, sizeof(payload));
+  String strPayload = String(payload);
+  Serial.print("Get gpio status: ");
+  Serial.println(strPayload);
+  return strPayload;
+}
+*/
+RPC_Response processGetCategoriaState(const RPC_Data &data)
+{
+    Serial.println("Received the set delay RPC method");
+
+  // Process data
+
+
+
   return RPC_Response(NULL, true);
 }
 
@@ -116,23 +192,8 @@ void setup()
     Serial.println("Subscribe to callbacks done");
     subscribed = true;
   }
-}
 
-int categoriaEconomia;
-
-RPC_Response economiaSet(const RPC_Data &data)
-{
-
-  categoriaEconomia = data;
-  Serial.printf("RPC ECONOMIA SET %d",data);
-
-  return RPC_Response(NULL, categoriaEconomia);
-}
-
-RPC_Response economiaGet(const RPC_Data &data)
-{
-  Serial.printf("RPC ECONOMIA GET %d \n",data);
-  return RPC_Response(NULL,categoriaEconomia );
+  tablaCategorias.imprimirTabla();
 }
 
 void loop()
@@ -184,12 +245,8 @@ void loop()
     Serial.println("¡Botón presionado!");
     buttonPressed = false;
 
-    // Cambia el menú cada vez que se presiona el botón
-    currentMenu++;
-    if (currentMenu > 3)
-    { // Ajusta este valor si agregas más menús
-      currentMenu = 0;
-    }
+    currentMenu = (currentMenu + 1) % 4; // Cambiar 4 por el número total de menús
+
   }
 
   // Muestra el menú actual en función del valor de currentMenu
@@ -205,7 +262,13 @@ void loop()
     showTempHum();
     break;
   case 3:
-    showNews(3); // Llamada a la función para mostrar noticias de economía
+    for(int i =1; i<MAX_CATEGORIAS;i++){
+        if(tablaCategorias.estados[i]==true){
+          showNews(i);
+        }
+        cambiandoCategoria();
+    }
+    showNews(666);
     break;
   default:
     showDefaultMenu();
@@ -241,6 +304,17 @@ void showDefaultMenu()
   delay(1000); // Mostrar el mensaje durante 2 segundos
 }
 
+void cambiandoCategoria(void){
+    lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("   //////////// ");
+  lcd.setCursor(0, 1);
+  lcd.print("  Cambiando");
+  lcd.setCursor(0, 2);
+  lcd.print(" Categoria");
+  lcd.setCursor(0,3);
+  lcd.print("//////////");
+}
 void showGlobalTimeMenu()
 {
   lcd.clear();
@@ -275,10 +349,12 @@ void showTempHum()
 }
 // business entertainment general health science sports technology
 
+/*
+https://newsapi.org/v2/top-headlines/?category=general&pageSize=3&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f
+*/
 void showNews(int tipoNoticia)
 {
   String peticionNoticias;
-  Serial.println("Solicitando noticias de economía...");
   if (WiFi.status() == WL_CONNECTED)
   {
     HttpClient client = HttpClient(espClient, "newsapi.org", 80);
@@ -286,35 +362,35 @@ void showNews(int tipoNoticia)
     {
     case 1:
       Serial.println("Seleccionadas noticias business");
-      peticionNoticias = "/v2/top-headlines/?category=business&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f";
+      peticionNoticias = "/v2/top-headlines/?category=business&pageSize=3&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f";
       break;
     case 2:
       Serial.println("Seleccionadas noticias entertaiment");
-      peticionNoticias = "/v2/top-headlines/?category=entertainment&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f";
+      peticionNoticias = "/v2/top-headlines/?category=entertainment&pageSize=3&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f";
       break;
 
     case 3:
       Serial.println("Seleccionadas noticias health");
-      peticionNoticias = "/v2/top-headlines/?category=health&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f";
+      peticionNoticias = "/v2/top-headlines/?category=health&pageSize=3&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f";
       break;
     case 4:
       Serial.println("Seleccionadas noticias science");
-      peticionNoticias = "/v2/top-headlines/?category=science&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f";
+      peticionNoticias = "/v2/top-headlines/?category=science&pageSize=3&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f";
       break;
 
     case 5:
       Serial.println("Seleccionadas noticias sport");
-      peticionNoticias = "/v2/top-headlines/?category=sports&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f";
+      peticionNoticias = "/v2/top-headlines/?category=sports&pageSize=3&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f";
       break;
 
     case 6:
       Serial.println("Seleccionadas noticias tech");
-      peticionNoticias = "/v2/top-headlines/?category=technology&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f";
+      peticionNoticias = "/v2/top-headlines/?category=technology&pageSize=3&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f";
       break;
 
     default:
       Serial.println("Seleccionadas noticias generales");
-      peticionNoticias = "/v2/top-headlines/?category=general&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f";
+      peticionNoticias = "/v2/top-headlines/?category=general&pageSize=3&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f";
       break;
     }
 
