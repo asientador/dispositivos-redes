@@ -291,6 +291,73 @@ void loop()
   tb.loop();
 }
 
+
+void showRealMadridMatches() {
+  Serial.println("Mostrando los resultados de los últimos 5 partidos del Real Madrid en el LCD...");
+
+  // Verifica si está conectado a WiFi
+  if (WiFi.status() == WL_CONNECTED) {
+    // Crea un cliente HTTP para realizar la solicitud a la API
+    HttpClient client = HttpClient(espClient, "api.football-data.org", 80);
+
+    // Inicia la solicitud y envía los encabezados necesarios
+    client.beginRequest();
+    client.sendHeader("X-Auth-Token", "7d46ff50b3934fed803679b75e3c442c");
+    client.endRequest();
+
+    // Realiza la solicitud GET con los parámetros de la URL
+    client.get("/v2/teams/86/matches?status=FINISHED&limit=5");
+
+    delay(1000); // Espera un segundo para asegurar la recepción de datos
+    String matches; // Variable para almacenar los partidos
+
+    // Verifica si hay datos disponibles en la respuesta
+    if (client.available()) {
+      matches = client.readString(); // Lee toda la respuesta
+
+      // Parsea el JSON
+      DynamicJsonDocument doc(2048);
+      deserializeJson(doc, matches);
+
+      // Extrae la información de los partidos
+      JsonArray matchesArray = doc["matches"];
+
+      // Limpia la pantalla del LCD
+      lcd.clear();
+
+      // Itera sobre los partidos y muestra los resultados en el LCD
+      for (JsonObject match : matchesArray) {
+        // Obtiene la información del partido
+        String homeTeam = match["homeTeam"]["name"];
+        String awayTeam = match["awayTeam"]["name"];
+        String winner = match["score"]["winner"];
+        int homeTeamGoals = match["score"]["fullTime"]["homeTeam"];
+        int awayTeamGoals = match["score"]["fullTime"]["awayTeam"];
+
+        // Construye el resultado del partido
+        String result = "";
+        if (winner == "HOME_TEAM") {
+          result = homeTeam + " " + String(homeTeamGoals) + " - " + String(awayTeamGoals) + " " + awayTeam;
+        } else if (winner == "AWAY_TEAM") {
+          result = awayTeam + " " + String(awayTeamGoals) + " - " + String(homeTeamGoals) + " " + homeTeam;
+        } else {
+          result = homeTeam + " " + String(homeTeamGoals) + " - " + String(awayTeamGoals) + " " + awayTeam + " (Empate)";
+        }
+
+        // Muestra el resultado en el LCD
+        lcd.print(result);
+        lcd.setCursor( 0,1); // Mueve al siguiente renglón
+        delay(2000); // Espera 2 segundos antes de mostrar el próximo partido
+      }
+    } else {
+      Serial.println("No se recibió ninguna respuesta del servidor");
+    }
+  } else {
+    Serial.println("Fallo en la conexión WiFi");
+  }
+}
+
+
 void showDefaultMenu()
 {
   lcd.clear();
@@ -300,6 +367,8 @@ void showDefaultMenu()
   lcd.print(" Reloj");
   lcd.setCursor(0, 2);
   lcd.print(" Temp/Hum");
+  lcd.setCursor(0,3);
+  lcd.print("  Noticias");
 
   delay(1000); // Mostrar el mensaje durante 2 segundos
 }
@@ -546,6 +615,11 @@ void connectWiFi()
   {
     delay(500);
     Serial.print(".");
+      lcd.clear();
+  lcd.setCursor(0, 1);
+  lcd.print("   Fallo conectar");
+  lcd.setCursor(0,2);
+  lcd.print("      WIFI");
   }
   Serial.println("\nConnected to WiFi");
 }
@@ -564,6 +638,11 @@ void connectThingsBoard()
     {
       Serial.print("Failed to connect to ThingsBoard, rc=");
       Serial.println(client.state());
+        lcd.clear();
+  lcd.setCursor(0,1);
+  lcd.print("   Fallo conectar");
+  lcd.setCursor(0,2);
+  lcd.print("    Thingsboard");
       delay(5000);
     }
   }
