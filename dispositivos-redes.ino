@@ -245,7 +245,7 @@ void loop()
     Serial.println("¡Botón presionado!");
     buttonPressed = false;
 
-    currentMenu = (currentMenu + 1) % 4; // Cambiar 4 por el número total de menús
+    currentMenu = (currentMenu + 1) % 5; // Cambiar 4 por el número total de menús
 
   }
 
@@ -268,9 +268,19 @@ void loop()
         }
         cambiandoCategoria();
     }
-    showNews(666);
+        showNews(666);
+  break;
+    
+    case 4:
+    Serial.println("ESTOY MADRID");
+    Serial.println("ESTOY MADRID");
+    Serial.println("ESTOY MADRID");
+    Serial.println("ESTOY MADRID");
+    Serial.println("ESTOY MADRID");
+    showRealMadridMatches();
     break;
-  default:
+    
+    default:
     showDefaultMenu();
     break;
   }
@@ -345,8 +355,12 @@ void showRealMadridMatches() {
         }
 
         // Muestra el resultado en el LCD
+        Serial.println(result);
+                Serial.println(result);
+
         lcd.print(result);
         lcd.setCursor( 0,1); // Mueve al siguiente renglón
+        lcd.println(result);
         delay(2000); // Espera 2 segundos antes de mostrar el próximo partido
       }
     } else {
@@ -512,17 +526,13 @@ void showNews(int tipoNoticia)
         // Actualizar el índice de inicio para la próxima búsqueda
         titleStart = titleEnd;
 
-        if (buttonPressed)
-        {
-          Serial.println("¡Botón presionado!");
-          buttonPressed = false;
+          if (buttonPressed)
+          {
+    Serial.println("¡Botón presionado!");
+    buttonPressed = false;
 
-          // Cambia el menú cada vez que se presiona el botón
-          currentMenu++;
-          if (currentMenu > 3)
-          { // Ajusta este valor si agregas más menús
-            currentMenu = 0;
-          }
+    currentMenu = (currentMenu + 1) % 5; // Cambiar 4 por el número total de menús
+
           break;
         }
       }
