@@ -21,11 +21,11 @@ Adafruit_BME280 bme; // I2C
 
 #define COUNT_OF(x) ((sizeof(x) / sizeof(0 [x])) / ((size_t)(!(sizeof(x) % sizeof(0 [x])))))
 
-#define WIFI_AP_NAME "wifiperuana"
-#define WIFI_PASSWORD "abascalvox"
+#define WIFI_AP_NAME "DIGIFIBRA-ECdy"
+#define WIFI_PASSWORD "GRt6tX2KR7sc"
 
 #define TOKEN "1234"
-#define THINGSBOARD_SERVER "192.168.137.117"
+#define THINGSBOARD_SERVER "192.168.1.132"
 #define SERIAL_DEBUG_BAUD 115200
 
 #define PINAZUL 33
@@ -39,36 +39,41 @@ Adafruit_BME280 bme; // I2C
 
 const int MAX_CATEGORIAS = 7; // Número máximo de categorías
 
-struct Tabla {
-    std::string categorias[MAX_CATEGORIAS];
-    bool estados[MAX_CATEGORIAS];
+struct Tabla
+{
+  std::string categorias[MAX_CATEGORIAS];
+  bool estados[MAX_CATEGORIAS];
 
-    // Constructor para inicializar la tabla con categorías predeterminadas
-    Tabla() {
-        // Categorías predeterminadas
-        categorias[0] = "x";
-        categorias[1] = "business";
-        categorias[2] = "entertainment";
-        categorias[3] = "health";
-        categorias[4] = "science";
-        categorias[5] = "sports";
-        categorias[6] = "technology";
+  // Constructor para inicializar la tabla con categorías predeterminadas
+  Tabla()
+  {
+    // Categorías predeterminadas
+    categorias[0] = "x";
+    categorias[1] = "business";
+    categorias[2] = "entertainment";
+    categorias[3] = "health";
+    categorias[4] = "science";
+    categorias[5] = "sports";
+    categorias[6] = "technology";
 
-        // Establecer todas las categorías como activadas por defecto
-        for (int i = 0; i < MAX_CATEGORIAS; ++i) {
-            estados[i] = false;
-        }
+    // Establecer todas las categorías como activadas por defecto
+    for (int i = 0; i < MAX_CATEGORIAS; ++i)
+    {
+      estados[i] = false;
     }
+  }
 
-    // Función para imprimir la tabla y el estado de activación de cada categoría
-    void imprimirTabla() {
-        Serial.println("Tabla de Categorías:");
-        for (int i = 0; i < MAX_CATEGORIAS; ++i) {
-            Serial.printf("%s",categorias[i].c_str());
-            Serial.print(": ");
-            Serial.println(estados[i] ? "Activada" : "Desactivada");
-        }
+  // Función para imprimir la tabla y el estado de activación de cada categoría
+  void imprimirTabla()
+  {
+    Serial.println("Tabla de Categorías:");
+    for (int i = 0; i < MAX_CATEGORIAS; ++i)
+    {
+      Serial.printf("%s", categorias[i].c_str());
+      Serial.print(": ");
+      Serial.println(estados[i] ? "Activada" : "Desactivada");
     }
+  }
 };
 
 Tabla tablaCategorias;
@@ -93,9 +98,36 @@ void IRAM_ATTR handleButtonInterrupt()
 // RPC handlers
 RPC_Callback callbacks[] = {
     {"estadoDispositivo", estadoDispositivo},
-    {"setCategoria", processSetCategoriaState },
-    {"getCategoria", processGetCategoriaState}
+    {"setCategoria", processSetCategoriaState},
+    {"getCategoria", processGetCategoriaState},
+    {"alarmaHumedad", alarmaHumedad},
 };
+
+RPC_Response alarmaHumedad(const RPC_Data &data)
+{
+
+  Serial.println("\nMe ha llegado la alarma de humedad \n");
+  lcd.clear();
+  lcd.setCursor(0, 1);
+  char message1[] = "  HA SALTADO LA";
+  for (int i = 0; i < strlen(message1); i++)
+  {
+    lcd.print(message1[i]);
+    delay(100); // Pequeño retraso para el efecto de animación
+  }
+
+  lcd.setCursor(0, 2);
+  char message2[] = "    ALARMA";
+  for (int i = 0; i < strlen(message2); i++)
+  {
+    lcd.print(message2[i]);
+    delay(100); // Pequeño retraso para el efecto de animación
+  }
+
+  delay(3000); // Mostrar el mensaje durante 5 segundos
+
+  return RPC_Response(NULL, data);
+}
 
 RPC_Response estadoDispositivo(const RPC_Data &data)
 {
@@ -110,12 +142,13 @@ RPC_Response processSetCategoriaState(const RPC_Data &data)
   int indice = data["pin"];
   bool estado = data["enabled"];
 
-  if (indice < MAX_CATEGORIAS) {
-        tablaCategorias.estados[indice] = estado;
-        tablaCategorias.imprimirTabla();
+  if (indice < MAX_CATEGORIAS)
+  {
+    tablaCategorias.estados[indice] = estado;
+    tablaCategorias.imprimirTabla();
   }
 
-  Serial.printf("Voy a devolver %d %d",data["pin"],data["enabled"]);
+  Serial.printf("Voy a devolver %d %d", data["pin"], data["enabled"]);
   return RPC_Response(std::to_string(indice).c_str(), estado);
 }
 
@@ -136,11 +169,9 @@ String get_gpio_status() {
 */
 RPC_Response processGetCategoriaState(const RPC_Data &data)
 {
-    Serial.println("Received the set delay RPC method");
+  Serial.println("Received the set delay RPC method");
 
   // Process data
-
-
 
   return RPC_Response(NULL, true);
 }
@@ -245,8 +276,7 @@ void loop()
     Serial.println("¡Botón presionado!");
     buttonPressed = false;
 
-    currentMenu = (currentMenu + 1) % 5; // Cambiar 4 por el número total de menús
-
+    currentMenu = (currentMenu + 1) % 4; // Cambiar 4 por el número total de menús
   }
 
   // Muestra el menú actual en función del valor de currentMenu
@@ -262,25 +292,18 @@ void loop()
     showTempHum();
     break;
   case 3:
-    for(int i =1; i<MAX_CATEGORIAS;i++){
-        if(tablaCategorias.estados[i]==true){
-          showNews(i);
-        }
-        cambiandoCategoria();
+    for (int i = 1; i < MAX_CATEGORIAS; i++)
+    {
+      if (tablaCategorias.estados[i] == true)
+      {
+        showNews(i);
+      }
+      cambiandoCategoria();
     }
-        showNews(666);
-  break;
-    
-    case 4:
-    Serial.println("ESTOY MADRID");
-    Serial.println("ESTOY MADRID");
-    Serial.println("ESTOY MADRID");
-    Serial.println("ESTOY MADRID");
-    Serial.println("ESTOY MADRID");
-    showRealMadridMatches();
+    showNews(666);
     break;
-    
-    default:
+
+  default:
     showDefaultMenu();
     break;
   }
@@ -301,7 +324,7 @@ void loop()
   tb.loop();
 }
 
-
+/*
 void showRealMadridMatches() {
   Serial.println("Mostrando los resultados de los últimos 5 partidos del Real Madrid en el LCD...");
 
@@ -371,31 +394,55 @@ void showRealMadridMatches() {
   }
 }
 
-
+*/
 void showDefaultMenu()
 {
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("   MENU ROTATIVO");
-  lcd.setCursor(0, 1);
-  lcd.print(" Reloj");
-  lcd.setCursor(0, 2);
-  lcd.print(" Temp/Hum");
-  lcd.setCursor(0,3);
-  lcd.print("  Noticias");
+  char welcomeMessage[] = " BIENVENIDO!";
+  for (int i = 0; i < strlen(welcomeMessage); i++)
+  {
+    lcd.print(welcomeMessage[i]);
+    delay(100); // Pequeño retraso para el efecto de animación
+  }
 
-  delay(1000); // Mostrar el mensaje durante 2 segundos
+  lcd.setCursor(0, 1);
+  char menu1[] = " Reloj";
+  for (int i = 0; i < strlen(menu1); i++)
+  {
+    lcd.print(menu1[i]);
+    delay(100); // Pequeño retraso para el efecto de animación
+  }
+
+  lcd.setCursor(0, 2);
+  char menu2[] = " Temp/Hum";
+  for (int i = 0; i < strlen(menu2); i++)
+  {
+    lcd.print(menu2[i]);
+    delay(100); // Pequeño retraso para el efecto de animación
+  }
+
+  lcd.setCursor(0, 3);
+  char menu3[] = " Noticias";
+  for (int i = 0; i < strlen(menu3); i++)
+  {
+    lcd.print(menu3[i]);
+    delay(100); // Pequeño retraso para el efecto de animación
+  }
+
+  delay(2000); // Mostrar el mensaje durante 2 segundos
 }
 
-void cambiandoCategoria(void){
-    lcd.clear();
+void cambiandoCategoria(void)
+{
+  lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("   //////////// ");
   lcd.setCursor(0, 1);
   lcd.print("  Cambiando");
   lcd.setCursor(0, 2);
   lcd.print(" Categoria");
-  lcd.setCursor(0,3);
+  lcd.setCursor(0, 3);
   lcd.print("//////////");
 }
 void showGlobalTimeMenu()
@@ -412,14 +459,14 @@ void showGlobalTimeMenu()
   lcd.setCursor(0, 3);
   lcd.print("Tokio: ");
   lcd.print(getFormattedTime(31500)); // Hora de Tokio (JST) con una hora menos
-  delay(1000);
+  delay(1000);                        // Pequeño retraso para el efecto de animación
 }
 
 void showTempHum()
 {
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("       TEMP/HUM");
+  lcd.print("     TEMP/HUM");
   lcd.setCursor(0, 1);
   lcd.print("Temp: ");
   lcd.print(bme.readTemperature());
@@ -526,12 +573,12 @@ void showNews(int tipoNoticia)
         // Actualizar el índice de inicio para la próxima búsqueda
         titleStart = titleEnd;
 
-          if (buttonPressed)
-          {
-    Serial.println("¡Botón presionado!");
-    buttonPressed = false;
+        if (buttonPressed)
+        {
+          Serial.println("¡Botón presionado!");
+          buttonPressed = false;
 
-    currentMenu = (currentMenu + 1) % 5; // Cambiar 4 por el número total de menús
+          currentMenu = (currentMenu + 1) % 4; // Cambiar 4 por el número total de menús
 
           break;
         }
@@ -625,11 +672,22 @@ void connectWiFi()
   {
     delay(500);
     Serial.print(".");
-      lcd.clear();
-  lcd.setCursor(0, 1);
-  lcd.print("   Fallo conectar");
-  lcd.setCursor(0,2);
-  lcd.print("      WIFI");
+    lcd.clear();
+    lcd.setCursor(0, 1);
+    char message1[] = "   Fallo conectar";
+    for (int i = 0; i < strlen(message1); i++)
+    {
+      lcd.print(message1[i]);
+      delay(100); // Pequeño retraso para el efecto de animación
+    }
+
+    lcd.setCursor(0, 2);
+    char message2[] = "      WIFI";
+    for (int i = 0; i < strlen(message2); i++)
+    {
+      lcd.print(message2[i]);
+      delay(100); // Pequeño retraso para el efecto de animación
+    }
   }
   Serial.println("\nConnected to WiFi");
 }
@@ -648,12 +706,24 @@ void connectThingsBoard()
     {
       Serial.print("Failed to connect to ThingsBoard, rc=");
       Serial.println(client.state());
-        lcd.clear();
-  lcd.setCursor(0,1);
-  lcd.print("   Fallo conectar");
-  lcd.setCursor(0,2);
-  lcd.print("    Thingsboard");
-      delay(5000);
+      lcd.clear();
+      lcd.setCursor(0, 1);
+      char message1[] = "   Fallo conectar";
+      for (int i = 0; i < strlen(message1); i++)
+      {
+        lcd.print(message1[i]);
+        delay(100); // Pequeño retraso para el efecto de animación
+      }
+
+      lcd.setCursor(0, 2);
+      char message2[] = "    Thingsboard";
+      for (int i = 0; i < strlen(message2); i++)
+      {
+        lcd.print(message2[i]);
+        delay(100); // Pequeño retraso para el efecto de animación
+      }
+
+      delay(5000); // Mostrar el mensaje durante 5 segundos
     }
   }
 }
