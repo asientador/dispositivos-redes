@@ -21,11 +21,11 @@ Adafruit_BME280 bme; // I2C
 
 #define COUNT_OF(x) ((sizeof(x) / sizeof(0 [x])) / ((size_t)(!(sizeof(x) % sizeof(0 [x])))))
 
-#define WIFI_AP_NAME "DIGIFIBRA-ECdy"
-#define WIFI_PASSWORD "GRt6tX2KR7sc"
+#define WIFI_AP_NAME "wifiperuana"
+#define WIFI_PASSWORD "abascalvox"
 
 #define TOKEN "1234"
-#define THINGSBOARD_SERVER "192.168.1.132"
+#define THINGSBOARD_SERVER "192.168.137.154"
 #define SERIAL_DEBUG_BAUD 115200
 
 #define PINAZUL 33
