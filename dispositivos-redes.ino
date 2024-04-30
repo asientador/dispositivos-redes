@@ -36,16 +36,16 @@ Adafruit_BME280 bme; // I2C
 #define LCD_ROWS 4
 
 #define BUTTON_PIN 23 // Pin del botón
-
 const int MAX_CATEGORIAS = 7; // Número máximo de categorías
+const int MAX_CIUDADES = 7; // Número máximo de categorías
 
-struct Tabla
+struct TablaCategoria
 {
   std::string categorias[MAX_CATEGORIAS];
   bool estados[MAX_CATEGORIAS];
 
   // Constructor para inicializar la tabla con categorías predeterminadas
-  Tabla()
+  TablaCategoria()
   {
     // Categorías predeterminadas
     categorias[0] = "x";
@@ -75,8 +75,45 @@ struct Tabla
     }
   }
 };
+struct TablaCiudades
+{
+  std::string ciudades[MAX_CIUDADES];
+  bool estados[MAX_CIUDADES];
 
-Tabla tablaCategorias;
+  // Constructor para inicializar la tabla con categorías predeterminadas
+  TablaCiudades()
+  {
+    // Categorías predeterminadas
+    ciudades[0] = "x";
+    ciudades[1] = "madrid";
+    ciudades[2] = "tokyo";
+    ciudades[3] = "paris";
+    ciudades[4] = "new_york";
+    ciudades[5] = "los_angeles";
+    ciudades[6] = "rome";
+
+    // Establecer todas las categorías como activadas por defecto
+    for (int i = 0; i < MAX_CIUDADES; ++i)
+    {
+      estados[i] = false;
+    }
+  }
+
+  // Función para imprimir la tabla y el estado de activación de cada categoría
+  void imprimirTabla()
+  {
+    Serial.println("Tabla de Ciudades:");
+    for (int i = 0; i < MAX_CIUDADES; ++i)
+    {
+      Serial.printf("%s", ciudades[i].c_str());
+      Serial.print(": ");
+      Serial.println(estados[i] ? "Activada" : "Desactivada");
+    }
+  }
+};
+
+TablaCategoria tablaCategorias;
+TablaCiudades tablaCiudades;
 
 LiquidCrystal_I2C lcd(LCD_ADDR, LCD_COLS, LCD_ROWS);
 WiFiClient espClient;
@@ -100,6 +137,8 @@ RPC_Callback callbacks[] = {
     {"estadoDispositivo", estadoDispositivo},
     {"setCategoria", processSetCategoriaState},
     {"getCategoria", processGetCategoriaState},
+    {"setCiudad", processSetCiudadState},
+    {"getCiudad", processGetCiudadState},
     {"alarmaHumedad", alarmaHumedad},
 };
 
@@ -152,26 +191,34 @@ RPC_Response processSetCategoriaState(const RPC_Data &data)
   return RPC_Response(std::to_string(indice).c_str(), estado);
 }
 
-/*
-String get_gpio_status() {
-  // Prepare gpios JSON payload string
-  StaticJsonBuffer<200> jsonBuffer;
-  JsonObject& data = jsonBuffer.createObject();
-  data[String(GPIO0_PIN)] = gpioState[0] ? true : false;
-  data[String(GPIO2_PIN)] = gpioState[1] ? true : false;
-  char payload[256];
-  data.printTo(payload, sizeof(payload));
-  String strPayload = String(payload);
-  Serial.print("Get gpio status: ");
-  Serial.println(strPayload);
-  return strPayload;
-}
-*/
 RPC_Response processGetCategoriaState(const RPC_Data &data)
 {
   Serial.println("Received the set delay RPC method");
 
   // Process data
+
+  return RPC_Response(NULL, true);
+}
+
+RPC_Response processSetCiudadState(const RPC_Data &data)
+{
+  Serial.println("RPC SET CIUDAD\n");
+
+  int indice = data["pin"];
+  bool estado = data["enabled"];
+
+  if (indice < MAX_CIUDADES)
+  {
+    tablaCategorias.estados[indice] = estado;
+    tablaCategorias.imprimirTabla();
+  }
+
+  Serial.printf("Voy a devolver %d %d", data["pin"], data["enabled"]);
+  return RPC_Response(std::to_string(indice).c_str(), estado);
+}
+
+RPC_Response processGetCiudadState(const RPC_Data &data)
+{
 
   return RPC_Response(NULL, true);
 }
@@ -324,77 +371,6 @@ void loop()
   tb.loop();
 }
 
-/*
-void showRealMadridMatches() {
-  Serial.println("Mostrando los resultados de los últimos 5 partidos del Real Madrid en el LCD...");
-
-  // Verifica si está conectado a WiFi
-  if (WiFi.status() == WL_CONNECTED) {
-    // Crea un cliente HTTP para realizar la solicitud a la API
-    HttpClient client = HttpClient(espClient, "api.football-data.org", 80);
-
-    // Inicia la solicitud y envía los encabezados necesarios
-    client.beginRequest();
-    client.sendHeader("X-Auth-Token", "7d46ff50b3934fed803679b75e3c442c");
-    client.endRequest();
-
-    // Realiza la solicitud GET con los parámetros de la URL
-    client.get("/v2/teams/86/matches?status=FINISHED&limit=5");
-
-    delay(1000); // Espera un segundo para asegurar la recepción de datos
-    String matches; // Variable para almacenar los partidos
-
-    // Verifica si hay datos disponibles en la respuesta
-    if (client.available()) {
-      matches = client.readString(); // Lee toda la respuesta
-
-      // Parsea el JSON
-      DynamicJsonDocument doc(2048);
-      deserializeJson(doc, matches);
-
-      // Extrae la información de los partidos
-      JsonArray matchesArray = doc["matches"];
-
-      // Limpia la pantalla del LCD
-      lcd.clear();
-
-      // Itera sobre los partidos y muestra los resultados en el LCD
-      for (JsonObject match : matchesArray) {
-        // Obtiene la información del partido
-        String homeTeam = match["homeTeam"]["name"];
-        String awayTeam = match["awayTeam"]["name"];
-        String winner = match["score"]["winner"];
-        int homeTeamGoals = match["score"]["fullTime"]["homeTeam"];
-        int awayTeamGoals = match["score"]["fullTime"]["awayTeam"];
-
-        // Construye el resultado del partido
-        String result = "";
-        if (winner == "HOME_TEAM") {
-          result = homeTeam + " " + String(homeTeamGoals) + " - " + String(awayTeamGoals) + " " + awayTeam;
-        } else if (winner == "AWAY_TEAM") {
-          result = awayTeam + " " + String(awayTeamGoals) + " - " + String(homeTeamGoals) + " " + homeTeam;
-        } else {
-          result = homeTeam + " " + String(homeTeamGoals) + " - " + String(awayTeamGoals) + " " + awayTeam + " (Empate)";
-        }
-
-        // Muestra el resultado en el LCD
-        Serial.println(result);
-                Serial.println(result);
-
-        lcd.print(result);
-        lcd.setCursor( 0,1); // Mueve al siguiente renglón
-        lcd.println(result);
-        delay(2000); // Espera 2 segundos antes de mostrar el próximo partido
-      }
-    } else {
-      Serial.println("No se recibió ninguna respuesta del servidor");
-    }
-  } else {
-    Serial.println("Fallo en la conexión WiFi");
-  }
-}
-
-*/
 void showDefaultMenu()
 {
   lcd.clear();
@@ -429,8 +405,6 @@ void showDefaultMenu()
     lcd.print(menu3[i]);
     delay(100); // Pequeño retraso para el efecto de animación
   }
-
-  delay(2000); // Mostrar el mensaje durante 2 segundos
 }
 
 void cambiandoCategoria(void)
