@@ -209,8 +209,8 @@ RPC_Response processSetCiudadState(const RPC_Data &data)
 
   if (indice < MAX_CIUDADES)
   {
-    tablaCategorias.estados[indice] = estado;
-    tablaCategorias.imprimirTabla();
+    tablaCiudades.estados[indice] = estado;
+    tablaCiudades.imprimirTabla();
   }
 
   Serial.printf("Voy a devolver %d %d", data["pin"], data["enabled"]);
