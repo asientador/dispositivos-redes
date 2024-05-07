@@ -179,7 +179,7 @@ RPC_Response estadoDispositivo(const RPC_Data &data)
   Serial.print("RPC ESTADO DISPOSITIVO\n");
   return RPC_Response(NULL, true);
 }
-
+int tipoNoticia = 0;
 RPC_Response processSetCategoriaState(const RPC_Data &data)
 {
   Serial.println("RPC SET CATEGORIAS\n");
@@ -194,6 +194,7 @@ RPC_Response processSetCategoriaState(const RPC_Data &data)
   }
 
   Serial.printf("Voy a devolver %d %d", data["pin"], data["enabled"]);
+  tipoNoticia=indice;
   return RPC_Response(std::to_string(indice).c_str(), estado);
 }
 
@@ -509,6 +510,7 @@ String getNetworkTime_default()
     */
     getNetworkTime_default();
     showTempHum();
+    showNews(tipoNoticia);
   }
 
   void cambiandoCategoria(void)
@@ -566,39 +568,53 @@ String getNetworkTime_default()
       case 1:
         Serial.println("Seleccionadas noticias business");
         peticionNoticias = "/v2/top-headlines/?category=business&pageSize=3&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f";
+        lcd.setCursor(4,2);
+        lcd.printf("BUSINESS");
         break;
       case 2:
         Serial.println("Seleccionadas noticias entertaiment");
         peticionNoticias = "/v2/top-headlines/?category=entertainment&pageSize=3&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f";
+                lcd.setCursor(4,2);
+        lcd.printf("ENTERTAIMENT");
         break;
 
       case 3:
         Serial.println("Seleccionadas noticias health");
         peticionNoticias = "/v2/top-headlines/?category=health&pageSize=3&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f";
+                lcd.setCursor(4,2);
+        lcd.printf("HEALTH");
         break;
       case 4:
         Serial.println("Seleccionadas noticias science");
         peticionNoticias = "/v2/top-headlines/?category=science&pageSize=3&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f";
+                lcd.setCursor(4,2);
+        lcd.printf("SCIENCE");
         break;
 
       case 5:
         Serial.println("Seleccionadas noticias sport");
         peticionNoticias = "/v2/top-headlines/?category=sports&pageSize=3&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f";
+                lcd.setCursor(4,2);
+        lcd.printf("SPORTS");
         break;
 
       case 6:
         Serial.println("Seleccionadas noticias tech");
         peticionNoticias = "/v2/top-headlines/?category=technology&pageSize=3&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f";
+                lcd.setCursor(4,2);
+        lcd.printf("TECH");
         break;
 
       default:
         Serial.println("Seleccionadas noticias generales");
         peticionNoticias = "/v2/top-headlines/?category=general&pageSize=3&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f";
+                lcd.setCursor(4,2);
+        lcd.printf("GENERALES");
         break;
       }
 
       // https://newsapi.org/v2/top-headlines/?category=general&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f
-
+/*
       client.get(peticionNoticias);
 
       // https://newsapi.org/v2/top-headlines?country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f
@@ -666,7 +682,10 @@ String getNetworkTime_default()
     {
       Serial.println("Fallo en la conexión WiFi");
     }
+  */
+    }
   }
+
 
   String getLastMatchResult()
   {
