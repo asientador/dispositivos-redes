@@ -25,7 +25,7 @@ Adafruit_BME280 bme; // I2C
 #define WIFI_PASSWORD "abascalvox"
 
 #define TOKEN "1234"
-#define THINGSBOARD_SERVER "192.168.137.154"
+#define THINGSBOARD_SERVER "192.168.137.125"
 #define SERIAL_DEBUG_BAUD 115200
 
 #define PINAZUL 33
@@ -111,7 +111,7 @@ struct TablaCiudades
       Serial.printf("%s", ciudades[i].c_str());
       Serial.print(": ");
       Serial.println(estados[i] ? "Activada" : "Desactivada");
-      Serial.println("numeroactivo -> " + numeroActivo);
+      //Serial.println("numeroactivo -> " + numeroActivo);
     }
   }
 };
@@ -513,6 +513,8 @@ String getNetworkTime_default()
     showNews(tipoNoticia);
   }
 
+  
+
   void cambiandoCategoria(void)
   {
     lcd.clear();
@@ -539,6 +541,7 @@ String getNetworkTime_default()
     lcd.setCursor(0, 3);
     lcd.print("Tokio: ");
     lcd.print(getFormattedTime(31500)); // Hora de Tokio (JST) con una hora menos
+    showNewsBueno(tipoNoticia);
     delay(1000);                        // Pequeño retraso para el efecto de animación
   }
 
@@ -557,6 +560,9 @@ String getNetworkTime_default()
   /*
   https://newsapi.org/v2/top-headlines/?category=general&pageSize=3&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f
   */
+  
+  
+  
   void showNews(int tipoNoticia)
   {
     String peticionNoticias;
@@ -613,8 +619,9 @@ String getNetworkTime_default()
         break;
       }
 
-      // https://newsapi.org/v2/top-headlines/?category=general&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f
 /*
+      // https://newsapi.org/v2/top-headlines/?category=general&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f
+
       client.get(peticionNoticias);
 
       // https://newsapi.org/v2/top-headlines?country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f
@@ -682,9 +689,70 @@ String getNetworkTime_default()
     {
       Serial.println("Fallo en la conexión WiFi");
     }
-  */
+*/
     }
   }
+  
+void showNewsBueno(int tipoNoticia)
+{
+  String peticionNoticias;
+  if (WiFi.status() == WL_CONNECTED)
+  {
+    HttpClient client = HttpClient(espClient, "newsapi.org", 80);
+    // Determinar la categoría de noticias basada en tipoNoticia
+    String categories[] = {"business", "entertainment", "health", "science", "sports", "technology", "general"};
+    String category = (tipoNoticia >= 1 && tipoNoticia <= 7) ? categories[tipoNoticia - 1] : "general";
+    Serial.println("Seleccionadas noticias " + category);
+    peticionNoticias = "/v2/top-headlines/?category=" + category + "&pageSize=3&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f";
+
+    client.get(peticionNoticias);
+    delay(1000); // Esperar un segundo para asegurar la recepción de datos
+
+    if (client.available())
+    {
+      String news = client.readString(); // Leer toda la respuesta
+      Serial.println("Noticias recibidas");
+
+      // Mostrar noticias en el LCD
+      scrollText(news, "title", lcd); // Función para desplazar el texto en el LCD
+    }
+    else
+    {
+      Serial.println("No se recibió ninguna respuesta del servidor");
+    }
+  }
+  else
+  {
+    Serial.println("Fallo en la conexión WiFi");
+  }
+}
+
+void scrollText(String data, String key, LiquidCrystal_I2C lcd)
+{
+  int titleStart = 0, titleEnd;
+  while ((titleStart = data.indexOf("\"" + key + "\":\"", titleStart)) != -1)
+  {
+    titleStart += key.length() + 4; // Avanzar al contenido del título
+    titleEnd = data.indexOf("\"", titleStart);
+    if (titleEnd == -1) break;
+    String title = data.substring(titleStart, titleEnd);
+
+    for (int i = title.length(); i >= 0; i--)
+    {
+      lcd.setCursor(0, 3); // Establecer el cursor en la última línea
+      lcd.print(title.substring(i)); // Imprimir texto desplazado
+      delay(300); // Retardo para desplazamiento visual
+      lcd.clear();
+    }
+
+    titleStart = titleEnd + 1; // Preparar el índice para el próximo título
+    if (buttonPressed) // Salir si se presiona el botón
+    {
+      buttonPressed = false;
+      break;
+    }
+  }
+}
 
 
   String getLastMatchResult()

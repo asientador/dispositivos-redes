@@ -3,5 +3,6 @@
     "board": "esp32:esp32:esp32",
     "sketch": "dispositivos-redes.ino",
     "port": "COM6",
-    "programmer": "esptool"
+    "programmer": "esptool",
+    "output": "C:\\Users\\deamon\\Downloads\\asdfa"
 }
