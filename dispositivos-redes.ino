@@ -327,9 +327,9 @@ String getNetworkTime_default()
 
 
 void ejemploThread(void *parameter) {
-  while (true) {
-    Serial.println("Este es un ejemplo de thread ejecutándose.");
-    vTaskDelay(1000 / portTICK_PERIOD_MS); // Espera de 1 segundo
+  while(1){
+   showNews(tipoNoticia);
+   vTaskDelay(1000 / portTICK_PERIOD_MS); // Espera de 1 segundo
   }
 }
 
@@ -350,7 +350,7 @@ void ejemploThread(void *parameter) {
   xTaskCreate(
     ejemploThread,    // Nombre de la función que implementa el thread
     "EjemploThread",  // Nombre del thread
-    10000,            // Tamaño de la pila (stack size)
+    100000,            // Tamaño de la pila (stack size)
     NULL,             // Parámetro pasado a la función del thread
     1,                // Prioridad del thread
     NULL              // Handle del thread (opcional, puede ser NULL)
@@ -474,7 +474,6 @@ void ejemploThread(void *parameter) {
       showDefaultMenu();
       break;
     }
-
     timeClient.update();
 
     float temperature = bme.readTemperature();
@@ -529,7 +528,6 @@ void ejemploThread(void *parameter) {
     */
     getNetworkTime_default();
     showTempHum();
-    showNews(tipoNoticia);
   }
 
   
@@ -685,15 +683,9 @@ if (client.available())
       lcd.print(displayText);
 
       // Esperar un tiempo antes de pasar al próximo desplazamiento
-      delay(300);
-
+      delay(1500);
       // Mostrar otros datos en las demás líneas sin afectarlas
-      lcd.setCursor(0, 0);
-      lcd.print(getNetworkTime_default());
-      lcd.setCursor(0, 1);
-      showTempHum();
-      delay(300);
-
+     
       // Verificar si el botón fue presionado
       if (buttonPressed)
       {
