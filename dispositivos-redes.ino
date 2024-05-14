@@ -17,6 +17,9 @@
 #include <ThingsBoard.h>
 #include <ArduinoJson.h> // Biblioteca para manipular JSON
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
 Adafruit_BME280 bme; // I2C
 
 #define COUNT_OF(x) ((sizeof(x) / sizeof(0 [x])) / ((size_t)(!(sizeof(x) % sizeof(0 [x])))))
@@ -323,6 +326,13 @@ String getNetworkTime_default()
   }
 
 
+void ejemploThread(void *parameter) {
+  while (true) {
+    Serial.println("Este es un ejemplo de thread ejecutándose.");
+    vTaskDelay(1000 / portTICK_PERIOD_MS); // Espera de 1 segundo
+  }
+}
+
   void setup()
   {
     Serial.begin(SERIAL_DEBUG_BAUD);
@@ -336,6 +346,15 @@ String getNetworkTime_default()
 
     connectWiFi();
     connectThingsBoard();
+
+  xTaskCreate(
+    ejemploThread,    // Nombre de la función que implementa el thread
+    "EjemploThread",  // Nombre del thread
+    10000,            // Tamaño de la pila (stack size)
+    NULL,             // Parámetro pasado a la función del thread
+    1,                // Prioridad del thread
+    NULL              // Handle del thread (opcional, puede ser NULL)
+  );
 
     // Reconnect to ThingsBoard, if needed
     if (!tb.connected())
@@ -619,80 +638,83 @@ String getNetworkTime_default()
         break;
       }
 
-/*
+
       // https://newsapi.org/v2/top-headlines/?category=general&country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f
 
       client.get(peticionNoticias);
 
-      // https://newsapi.org/v2/top-headlines?country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f
-      delay(1000); // Esperar un segundo para asegurar la recepción de datos
-      String news; // Variable para almacenar la noticia
+// https://newsapi.org/v2/top-headlines?country=us&apiKey=8631a941dd2b40bba8bf5a56b9891e9f
+delay(1000); // Esperar un segundo para asegurar la recepción de datos
+String news; // Variable para almacenar la noticia
 
-      if (client.available())
-      {
-        news = client.readString(); // Leer toda la respuesta
-        Serial.println("Noticias recibidas");
-        // Definir el índice de inicio de búsqueda del titular
-        int titleStart = 0;
+if (client.available())
+{
+  news = client.readString(); // Leer toda la respuesta
+  Serial.println("Noticias recibidas");
+  // Definir el índice de inicio de búsqueda del titular
+  int titleStart = 0;
 
-        while (true)
-        {
-          // Encontrar la próxima ocurrencia del titular
-          titleStart = news.indexOf("\"title\":\"", titleStart); // Encontrar el inicio del titular
+  while (true)
+  {
+    // Encontrar la próxima ocurrencia del titular
+    titleStart = news.indexOf("\"title\":\"", titleStart); // Encontrar el inicio del titular
 
-          Serial.printf("El title start es -> %d", titleStart);
-          if (titleStart == -1)
-          {
-            break; // Salir del bucle si no se encuentra más titular
-          }
-          Serial.println("He pasado el tittle start");
-          titleStart += 9;                               // Mover el índice de inicio al final del título actual
-          int titleEnd = news.indexOf("\"", titleStart); // Encontrar el fin del titular
-
-          if (titleEnd == -1)
-          {
-            break; // Salir del bucle si no se encuentra el fin del titular
-          }
-
-          // Extraer el titular entre las comillas
-          String title = news.substring(titleStart, titleEnd);
-
-          Serial.println("He pillado el titulo");
-
-          lcd.clear(); // Limpiar la pantalla del LCD
-          // Mostrar el titular en el LCD
-          lcd.print(title);
-
-          // Esperar un tiempo antes de pasar al próximo titular
-          sleep(3); // Esperar 2 segundos antes de mostrar la próxima noticia
-
-          // Actualizar el índice de inicio para la próxima búsqueda
-          titleStart = titleEnd;
-
-          if (buttonPressed)
-          {
-            Serial.println("¡Botón presionado!");
-            buttonPressed = false;
-
-            currentMenu = (currentMenu + 1) % 4; // Cambiar 4 por el número total de menús
-
-            break;
-          }
-        }
-      }
-      else
-      {
-        Serial.println("No se recibió ninguna respuesta del servidor");
-      }
-    }
-    else
+    Serial.printf("El title start es -> %d", titleStart);
+    if (titleStart == -1)
     {
-      Serial.println("Fallo en la conexión WiFi");
+      break; // Salir del bucle si no se encuentra más titular
     }
-*/
+    Serial.println("He pasado el title start");
+    titleStart += 9; // Mover el índice de inicio al final del título actual
+    int titleEnd = news.indexOf("\"", titleStart); // Encontrar el fin del titular
+
+    if (titleEnd == -1)
+    {
+      break; // Salir del bucle si no se encuentra el fin del titular
     }
+
+    // Extraer el titular entre las comillas
+    String title = news.substring(titleStart, titleEnd);
+
+    Serial.println("He pillado el título");
+
+    // Mostrar el titular desplazándose en la cuarta línea del LCD
+    for (int i = 0; i <= title.length(); i++) {
+      String displayText = title.substring(i, i + LCD_COLS);
+      lcd.setCursor(0, 3); // Establecer el cursor en la cuarta línea
+      lcd.print(displayText);
+
+      // Esperar un tiempo antes de pasar al próximo desplazamiento
+      delay(300);
+
+      // Mostrar otros datos en las demás líneas sin afectarlas
+      lcd.setCursor(0, 0);
+      lcd.print(getNetworkTime_default());
+      lcd.setCursor(0, 1);
+      showTempHum();
+      delay(300);
+
+      // Verificar si el botón fue presionado
+      if (buttonPressed)
+      {
+        Serial.println("¡Botón presionado!");
+        buttonPressed = false;
+        currentMenu = (currentMenu + 1) % 4; // Cambiar 4 por el número total de menús
+        break;
+      }
+    }
+
+    // Actualizar el índice de inicio para la próxima búsqueda
+    titleStart = titleEnd;
   }
-  
+}
+else
+{
+  Serial.println("No se recibió ninguna respuesta del servidor");
+}
+    }
+}
+
 void showNewsBueno(int tipoNoticia)
 {
   String peticionNoticias;
